@@ -1,0 +1,107 @@
+version: '3.8'
+
+services:
+  zabbix-server:
+    image: zabbix/zabbix-server-pgsql:latest
+    container_name: zabbix-server
+    restart: unless-stopped
+    ports:
+      - "10051:10051"
+    environment:
+      - DB_SERVER_HOST=zabbix-db
+      - DB_SERVER_PORT=5432
+      - POSTGRES_USER=zabbix
+      - POSTGRES_PASSWORD=zabbix
+      - POSTGRES_DB=zabbix
+    depends_on:
+      - zabbix-db
+    networks:
+      - zabbix-net
+
+  zabbix-db:
+    image: postgres:15-alpine
+    container_name: zabbix-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=zabbix
+      - POSTGRES_PASSWORD=zabbix
+      - POSTGRES_DB=zabbix
+    volumes:
+      - zabbix-db-data:/var/lib/postgresql/data
+    networks:
+      - zabbix-net
+
+  zabbix-web:
+    image: zabbix/zabbix-web-nginx-pgsql:latest
+    container_name: zabbix-web
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - ZBX_SERVER_HOST=zabbix-server
+      - DB_SERVER_HOST=zabbix-db
+      - DB_SERVER_PORT=5432
+      - POSTGRES_USER=zabbix
+      - POSTGRES_PASSWORD=zabbix
+      - POSTGRES_DB=zabbix
+    depends_on:
+      - zabbix-server
+    networks:
+      - zabbix-net
+
+# ... outros serviços ...
+
+  # O seu primeiro servidor Linux para monitoramento
+  servidor1:
+    image: zabbix/zabbix-agent:latest
+    container_name: servidor1
+    restart: unless-stopped
+    environment:
+      # O Zabbix Agent precisa do Hostname do Zabbix Server
+      - ZBX_SERVER_HOST=zabbix-server
+      - ZBX_HOSTNAME=servidor1 # Define o Hostname explicitamente
+    networks:
+      - zabbix-net
+
+  # O seu segundo servidor Linux para monitoramento
+  servidor2:
+    image: zabbix/zabbix-agent:latest
+    container_name: servidor2
+    restart: unless-stopped
+    environment:
+      - ZBX_SERVER_HOST=zabbix-server
+      - ZBX_HOSTNAME=servidor2
+    networks:
+      - zabbix-net
+
+  # O seu terceiro servidor Linux para monitoramento
+  servidor3:
+    image: zabbix/zabbix-agent:latest
+    container_name: servidor3
+    restart: unless-stopped
+    environment:
+      - ZBX_SERVER_HOST=zabbix-server
+      - ZBX_HOSTNAME=servidor3
+    networks:
+      - zabbix-net
+
+  # PARA ADICIONAR MAIS SERVIDORES (CONTAINERS), SÓ COPIAR E COLAR A CONFIGURAÇÃO DO SERVIDOR1, 2 OU 3 e alterar o nome para servidor4, 5, 6... Como no exemplo abaixo:
+  #servidor4:
+  #  image: zabbix/zabbix-agent:latest
+  #  container_name: servidor4
+  #  restart: unless-stopped
+  #  environment:
+  #    - ZBX_SERVER_HOST=zabbix-server
+  #    - ZBX_HOSTNAME=servidor4
+  #  networks:
+  #    - zabbix-net
+
+
+# ... redes e volumes ...
+
+networks:
+  zabbix-net:
+    driver: bridge
+
+volumes:
+  zabbix-db-data:
